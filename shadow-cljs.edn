@@ -1,10 +1,10 @@
 {:source-paths ["src"]
  :repositories {"central" {:url "https://maven.aliyun.com/nexus/content/groups/public/"}
                 "clojars" {:url "https://mirrors.ustc.edu.cn/clojars/"}}
- :dependencies [[mvc-works/skir "0.0.2"]
-                [respo/router "0.4.0"]]
+ :dependencies [[org.clojure/core.incubator "0.1.4"]]
  :builds {:app {:target :node-script
                 :output-to "target/server.js"
                 :main app.main/main!
-                :devtools {:after-load app.main/reload!}}
-                :release {:output-to "dist/server.js"}}}
+                :devtools {:after-load app.main/reload!}
+                :release {:output-to "dist/server.js"
+                          :compiler-options {:optimizations :simple}}}}}

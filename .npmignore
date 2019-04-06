@@ -1,0 +1,9 @@
+
+.shadow-cljs/
+src/
+target/
+.gitattributes
+.nrepl-port
+calcit.edn
+shadow-cljs.edn
+yarn.lock
