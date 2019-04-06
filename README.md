@@ -9,7 +9,7 @@ Clojars Outdated
 ![](https://img.shields.io/npm/v/@mvc-works/clojars-outdated.svg?label=clojars-outdated)
 
 ```bash
-$ yarn global add @mvc-works/clojars-outdated@0.1.0-a4
+$ yarn global add @mvc-works/clojars-outdated
 $ clojars-outdated
 Reading shadow-cljs.edn
 Processing 13 tasks: 1 2 3 4 5 6 7 8 9 10 11 12 13
