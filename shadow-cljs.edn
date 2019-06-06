@@ -1,7 +1,9 @@
 {:source-paths ["src"]
  :repositories {"central" {:url "https://maven.aliyun.com/nexus/content/groups/public/"}
                 "clojars" {:url "https://mirrors.ustc.edu.cn/clojars/"}}
- :dependencies [[org.clojure/core.incubator "0.1.4"]]
+ :dependencies [[mvc-works/chan-utils       "0.1.0"]
+                [cljs-node-io               "1.1.2"]
+                [org.clojure/core.incubator "0.1.4"]]
  :builds {:app {:target :node-script
                 :output-to "target/server.js"
                 :main app.main/main!

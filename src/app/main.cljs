@@ -5,21 +5,27 @@
             [cljs.reader :refer [read-string]]
             [clojure.core.async :refer [go chan >! <!]]
             ["chalk" :as chalk]
-            [clojure.string :as string])
+            [clojure.string :as string]
+            [cljs-node-io.fs :refer [areadFile]]
+            [chan-utils.core :refer [chan-once all-once]])
   (:require-macros [clojure.core.strint :refer [<<]]))
 
+(defn write [& xs] (.apply js/process.stdout.write js/process.stdout (clj->js xs)))
+
 (defn chan-check-dep [[dep-name version]]
-  (let [<result (chan)]
-    (-> axios
-        (.get (str "https://clojars.org/api/artifacts/" dep-name) (clj->js {}))
-        (.then
-         (fn [response]
-           (let [latest-version (.-latest_version (.-data response))]
-             (go (>! <result {:ok? true, :params [dep-name version], :data latest-version})))))
-        (.catch
-         (fn [error]
-           (go (>! <result {:ok? false, :params [dep-name version], :error error})))))
-    <result))
+  (chan-once
+   got
+   (-> axios
+       (.get (str "https://clojars.org/api/artifacts/" dep-name) (clj->js {}))
+       (.then
+        (fn [response]
+          (let [latest-version (.-latest_version (.-data response))]
+            (write (chalk/gray ">"))
+            (got {:ok? true, :params [dep-name version], :data latest-version}))))
+       (.catch
+        (fn [error]
+          (write (chalk/red ">"))
+          (got {:ok? false, :params [dep-name version], :error error}))))))
 
 (defn pad-right [x n] (if (>= (count x) n) x (recur (str x " ") n)))
 
@@ -57,32 +63,24 @@
       (println)
       (println "Not able to check:" (->> failed-checks (map first) (string/join " "))))))
 
-(defn write [& xs] (.apply js/process.stdout.write js/process.stdout (clj->js xs)))
-
-(defn map-chans [chan-f xs]
-  (let [all-tasks (doall (map chan-f xs)), <result (chan), *counter (atom 0)]
-    (go
-     (write (.gray chalk (<< "Processing ~(count all-tasks) tasks: ")))
-     (loop [acc [], tasks all-tasks]
-       (if (empty? tasks)
-         (do (println) (>! <result acc))
-         (do
-          (swap! *counter inc)
-          (write (.gray chalk (<< "~{@*counter} ")))
-          (recur (conj acc (<! (first tasks))) (rest tasks))))))
-    <result))
-
 (defn task! []
-  (println (.gray chalk "Reading shadow-cljs.edn"))
+  (println (chalk/gray "Reading shadow-cljs.edn"))
   (when-not (fs/existsSync "shadow-cljs.edn")
-    (println (.red chalk "Not found"))
+    (println (chalk/red "Not found"))
     (.exit js/process 1))
   (go
-   (let [content (fs/readFileSync "shadow-cljs.edn" "utf8")
+   (let [start-time (.now js/Date)
+         [err content] (<! (areadFile "shadow-cljs.edn" "utf8"))
          data (read-string content)
-         <check-results (map-chans chan-check-dep (:dependencies data))
-         results (<! <check-results)]
-     (display-results! results))))
+         deps (:dependencies data)]
+     (write (chalk/gray (string/join "" (repeat (count deps) "."))))
+     (write "\r")
+     (let [<check-results (all-once chan-check-dep deps)
+           results (<! <check-results)
+           end-time (.now js/Date)
+           cost (/ (- end-time start-time) 1000)]
+       (println (chalk/gray (<< " cost ~{cost}s to check.")))
+       (display-results! results)))))
 
 (defn main! [] (task!))
 
