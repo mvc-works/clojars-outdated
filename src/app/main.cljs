@@ -2,12 +2,14 @@
 (ns app.main
   (:require ["axios" :as axios]
             ["fs" :as fs]
+            ["path" :as path]
             [cljs.reader :refer [read-string]]
             [clojure.core.async :refer [go chan >! <!]]
             ["chalk" :as chalk]
             [clojure.string :as string]
             [cljs-node-io.fs :refer [areadFile]]
-            [chan-utils.core :refer [chan-once all-once]])
+            [chan-utils.core :refer [chan-once all-once]]
+            ["latest-version" :as latest-version])
   (:require-macros [clojure.core.strint :refer [<<]]))
 
 (defn write [& xs] (.apply js/process.stdout.write js/process.stdout (clj->js xs)))
@@ -26,6 +28,20 @@
         (fn [error]
           (write (chalk/red ">"))
           (got {:ok? false, :params [dep-name version], :error error}))))))
+
+(defn check-version! []
+  (let [pkg (.parse js/JSON (fs/readFileSync (path/join js/__dirname "../package.json")))
+        version (.-version pkg)
+        pkg-name (.-name pkg)]
+    (-> (latest-version pkg-name)
+        (.then
+         (fn [npm-version]
+           (if (= npm-version version)
+             (comment println "Running latest version" version)
+             (println
+              (chalk/yellow
+               (<<
+                "New version ~{npm-version} available, current one is ~{version} . Please upgrade!\n\nyarn global add ~{pkg-name}\n")))))))))
 
 (defn pad-right [x n] (if (>= (count x) n) x (recur (str x " ") n)))
 
@@ -82,6 +98,6 @@
        (println (chalk/gray (<< " cost ~{cost}s to check.")))
        (display-results! results)))))
 
-(defn main! [] (task!))
+(defn main! [] (task!) (check-version!))
 
 (defn reload! [] (.clear js/console) (println "Reloaded.") (task!))
