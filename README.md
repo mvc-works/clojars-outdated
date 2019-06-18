@@ -25,6 +25,12 @@ Not able to check: org.clojure/core.incubator
 $
 ```
 
+"Replace mode" to replace version numbers directly if detected:
+
+```bash
+replace=true clojars-outdated
+```
+
 ### License
 
 MIT

@@ -7,7 +7,7 @@
             [clojure.core.async :refer [go chan >! <!]]
             ["chalk" :as chalk]
             [clojure.string :as string]
-            [cljs-node-io.fs :refer [areadFile]]
+            [cljs-node-io.fs :refer [areadFile awriteFile]]
             [chan-utils.core :refer [chan-once all-once]]
             ["latest-version" :as latest-version])
   (:require-macros [clojure.core.strint :refer [<<]]))
@@ -79,6 +79,38 @@
       (println)
       (println "Not able to check:" (->> failed-checks (map first) (string/join " "))))))
 
+(defn replace-numbers [content new-versions]
+  (if (empty? new-versions)
+    content
+    (let [rule (first new-versions)
+          new-content (let [pattern (re-pattern
+                                     (str (:pkg rule) "\\s+" "\"" (:from rule) "\""))]
+                        (string/replace
+                         content
+                         pattern
+                         (fn [piece] (string/replace piece (:from rule) (:to rule)))))]
+      (recur new-content (rest new-versions)))))
+
+(defn replace-versions! [results]
+  (let [new-versions (->> results
+                          (filter
+                           (fn [x]
+                             (and (:ok? x)
+                                  (not= (:data x) (last (:params x)))
+                                  (re-matches #"\d+\.\d+\.\d+" (:data x)))))
+                          (map
+                           (fn [x]
+                             {:pkg (first (:params x)),
+                              :from (last (:params x)),
+                              :to (:data x)})))]
+    (if-not (empty? new-versions)
+      (go
+       (let [[err content] (<! (areadFile "shadow-cljs.edn" "utf8"))
+             new-content (replace-numbers content new-versions)]
+         (<! (awriteFile "shadow-cljs.edn" new-content nil))
+         (println)
+         (println (chalk/yellow "File is modified under replace mode!")))))))
+
 (defn task! []
   (println (chalk/gray "Reading shadow-cljs.edn"))
   (when-not (fs/existsSync "shadow-cljs.edn")
@@ -96,7 +128,8 @@
            end-time (.now js/Date)
            cost (/ (- end-time start-time) 1000)]
        (println (chalk/gray (<< " cost ~{cost}s to check.")))
-       (display-results! results)))))
+       (display-results! results)
+       (when (= "true" js/process.env.replace) (replace-versions! results))))))
 
 (defn main! [] (task!) (check-version!))
 
