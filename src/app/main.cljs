@@ -84,7 +84,12 @@
     content
     (let [rule (first new-versions)
           new-content (let [pattern (re-pattern
-                                     (str (:pkg rule) "\\s+" "\"" (:from rule) "\""))]
+                                     (str
+                                      (:pkg rule)
+                                      "\\s+"
+                                      "\""
+                                      (string/replace (:from rule) "." "\\.")
+                                      "\""))]
                         (string/replace
                          content
                          pattern
