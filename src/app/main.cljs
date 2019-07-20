@@ -79,6 +79,11 @@
       (println)
       (println "Not able to check:" (->> failed-checks (map first) (string/join " "))))))
 
+(def envs
+  {:replace? (= "true" js/process.env.replace),
+   :china? (= "true" js/process.env.china),
+   :npm-check? (= "true" js/process.env.npm)})
+
 (defn replace-numbers [content new-versions]
   (if (empty? new-versions)
     content
@@ -134,8 +139,8 @@
            cost (/ (- end-time start-time) 1000)]
        (println (chalk/gray (<< " cost ~{cost}s to check.")))
        (display-results! results)
-       (when (= "true" js/process.env.replace) (replace-versions! results))))))
+       (when (:replace? envs) (replace-versions! results))))))
 
-(defn main! [] (task!) (check-version!))
+(defn main! [] (task!) (when (:npm-check? envs) (check-version!)))
 
 (defn reload! [] (.clear js/console) (println "Reloaded.") (task!))

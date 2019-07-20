@@ -31,6 +31,12 @@ $
 replace=true clojars-outdated
 ```
 
+To check if CLI outdated:
+
+```bash
+npm=true clojars-outdated
+```
+
 ### License
 
 MIT
