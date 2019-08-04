@@ -19,7 +19,7 @@
   (chan-once
    got
    (-> axios
-       (.get (str "https://clojars.org/api/artifacts/" dep-name) (j/obj :timeout 8000))
+       (.get (str "https://clojars.org/api/artifacts/" dep-name) (j/obj :timeout 12000))
        (.then
         (fn [response]
           (let [latest-version (.-latest_version (.-data response))]
@@ -61,10 +61,14 @@
                              (filter (fn [info] (= (:current info) (:latest info))))
                              (map :name)
                              (map str))]
+    (when (not-empty skipped-deps)
+      (println)
+      (println
+       (chalk/gray "Skipped checking:" (->> skipped-deps (map first) (string/join " ")))))
     (when (not-empty latest-packages)
       (println)
       (println
-       (.gray chalk "These packages are up to date:")
+       (.gray chalk "Up to date:")
        (.gray chalk (->> latest-packages (string/join " ")))))
     (when (not-empty old-packages)
       (println)
@@ -76,13 +80,9 @@
            (:current info)
            (.gray chalk "->")
            (:latest info)))))
-    (when (not-empty skipped-deps)
-      (println)
-      (println
-       (chalk/gray "Skipped checking:" (->> skipped-deps (map first) (string/join " ")))))
     (when (not-empty failed-checks)
       (println)
-      (println "Not able to check:" (->> failed-checks (map first) (string/join " "))))))
+      (println "Failed to check:" (->> failed-checks (map first) (string/join " "))))))
 
 (def envs
   {:replace? (= "true" js/process.env.replace),
