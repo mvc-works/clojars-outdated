@@ -9,7 +9,8 @@
             [clojure.string :as string]
             [cljs-node-io.fs :refer [areadFile awriteFile]]
             [chan-utils.core :refer [chan-once all-once]]
-            ["latest-version" :as latest-version])
+            ["latest-version" :as latest-version]
+            [applied-science.js-interop :as j])
   (:require-macros [clojure.core.strint :refer [<<]]))
 
 (defn write [& xs] (.apply js/process.stdout.write js/process.stdout (clj->js xs)))
@@ -18,7 +19,7 @@
   (chan-once
    got
    (-> axios
-       (.get (str "https://clojars.org/api/artifacts/" dep-name) (clj->js {}))
+       (.get (str "https://clojars.org/api/artifacts/" dep-name) (j/obj :timeout 12000))
        (.then
         (fn [response]
           (let [latest-version (.-latest_version (.-data response))]
@@ -45,7 +46,7 @@
 
 (defn pad-right [x n] (if (>= (count x) n) x (recur (str x " ") n)))
 
-(defn display-results! [results]
+(defn display-results! [results skipped-deps]
   (let [ok-checks (->> results
                        (filter (fn [check] (:ok? check)))
                        (map
@@ -60,10 +61,14 @@
                              (filter (fn [info] (= (:current info) (:latest info))))
                              (map :name)
                              (map str))]
+    (when (not-empty skipped-deps)
+      (println)
+      (println
+       (chalk/gray "Skipped checking:" (->> skipped-deps (map first) (string/join " ")))))
     (when (not-empty latest-packages)
       (println)
       (println
-       (.gray chalk "These packages are up to date:")
+       (.gray chalk "Up to date:")
        (.gray chalk (->> latest-packages (string/join " ")))))
     (when (not-empty old-packages)
       (println)
@@ -77,7 +82,7 @@
            (:latest info)))))
     (when (not-empty failed-checks)
       (println)
-      (println "Not able to check:" (->> failed-checks (map first) (string/join " "))))))
+      (println "Failed to check:" (->> failed-checks (map first) (string/join " "))))))
 
 (def envs
   {:replace? (= "true" js/process.env.replace),
@@ -130,7 +135,12 @@
    (let [start-time (.now js/Date)
          [err content] (<! (areadFile "shadow-cljs.edn" "utf8"))
          data (read-string content)
-         deps (:dependencies data)]
+         deps (->> (:dependencies data)
+                   (filter
+                    (fn [pair] (not (string/includes? (str (first pair)) "org.clojure")))))
+         skipped-deps (->> (:dependencies data)
+                           (filter
+                            (fn [pair] (string/includes? (str (first pair)) "org.clojure"))))]
      (write (chalk/gray (string/join "" (repeat (count deps) "."))))
      (write "\r")
      (let [<check-results (all-once chan-check-dep deps)
@@ -138,7 +148,7 @@
            end-time (.now js/Date)
            cost (/ (- end-time start-time) 1000)]
        (println (chalk/gray (<< " cost ~{cost}s to check.")))
-       (display-results! results)
+       (display-results! results skipped-deps)
        (when (:replace? envs) (replace-versions! results))))))
 
 (defn main! [] (task!) (when (:npm-check? envs) (check-version!)))
