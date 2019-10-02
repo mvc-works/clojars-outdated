@@ -13,13 +13,21 @@
             [applied-science.js-interop :as j])
   (:require-macros [clojure.core.strint :refer [<<]]))
 
+(def envs
+  {:replace? (= "true" js/process.env.replace),
+   :china? (= "true" js/process.env.china),
+   :npm-check? (= "true" js/process.env.npm),
+   :wait? (= "true" js/process.env.wait)})
+
 (defn write [& xs] (.apply js/process.stdout.write js/process.stdout (clj->js xs)))
 
 (defn chan-check-dep [[dep-name version]]
   (chan-once
    got
    (-> axios
-       (.get (str "https://clojars.org/api/artifacts/" dep-name) (j/obj :timeout 12000))
+       (.get
+        (str "https://clojars.org/api/artifacts/" dep-name)
+        (j/obj :timeout (if (:wait? envs) 100000 12000)))
        (.then
         (fn [response]
           (let [latest-version (.-latest_version (.-data response))]
@@ -83,11 +91,6 @@
     (when (not-empty failed-checks)
       (println)
       (println "Failed to check:" (->> failed-checks (map first) (string/join " "))))))
-
-(def envs
-  {:replace? (= "true" js/process.env.replace),
-   :china? (= "true" js/process.env.china),
-   :npm-check? (= "true" js/process.env.npm)})
 
 (defn replace-numbers [content new-versions]
   (if (empty? new-versions)
