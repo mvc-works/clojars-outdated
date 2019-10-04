@@ -214,7 +214,21 @@
               :data {
                "T" {:type :leaf, :by "yeKFqj7rX", :at 1564856116838, :text "j/obj", :id "cDAvtp27M"}
                "j" {:type :leaf, :by "yeKFqj7rX", :at 1564856119406, :text ":timeout", :id "EaOyTvYGrR"}
-               "r" {:type :leaf, :by "yeKFqj7rX", :at 1564892509135, :text "12000", :id "mD1T7vbKK"}
+               "v" {
+                :type :expr, :by "yeKFqj7rX", :at 1569996704334, :id "JgOfqEfp0c"
+                :data {
+                 "T" {:type :leaf, :by "yeKFqj7rX", :at 1569996704334, :text "if", :id "Ojpmx27ZJN"}
+                 "j" {
+                  :type :expr, :by "yeKFqj7rX", :at 1569996704334, :id "rlpgv148LB"
+                  :data {
+                   "T" {:type :leaf, :by "yeKFqj7rX", :at 1569996704334, :text ":wait?", :id "mrbjuguJkH"}
+                   "j" {:type :leaf, :by "yeKFqj7rX", :at 1569996704334, :text "envs", :id "wSALceN0rz"}
+                  }
+                 }
+                 "r" {:type :leaf, :by "yeKFqj7rX", :at 1569996704334, :text "100000", :id "_45JEkRG3q"}
+                 "v" {:type :leaf, :by "yeKFqj7rX", :at 1569996704334, :text "12000", :id "j2OcEkTC3r"}
+                }
+               }
               }
              }
             }
@@ -1209,6 +1223,20 @@
              "T" {:type :leaf, :by "yeKFqj7rX", :at 1563622459357, :text "=", :id "cAouSAZwQMs"}
              "j" {:type :leaf, :by "yeKFqj7rX", :at 1563622459357, :text "\"true", :id "TBcsYp_xMeO"}
              "r" {:type :leaf, :by "yeKFqj7rX", :at 1563622459357, :text "js/process.env.npm", :id "vO_-ZJY7ygB"}
+            }
+           }
+          }
+         }
+         "x" {
+          :type :expr, :by "yeKFqj7rX", :at 1569996212747, :id "2AG4OXCS6v"
+          :data {
+           "T" {:type :leaf, :by "yeKFqj7rX", :at 1569996217112, :text ":wait?", :id "2AG4OXCS6vleaf"}
+           "j" {
+            :type :expr, :by "yeKFqj7rX", :at 1569996220576, :id "4ZSJk_SxY"
+            :data {
+             "T" {:type :leaf, :by "yeKFqj7rX", :at 1569996221502, :text "=", :id "CLEXC3oDq"}
+             "j" {:type :leaf, :by "yeKFqj7rX", :at 1569996222517, :text "\"true", :id "h7Rq7kZNn"}
+             "r" {:type :leaf, :by "yeKFqj7rX", :at 1569996226490, :text "js/process.env.wait", :id "6uVtkzLm5"}
             }
            }
           }

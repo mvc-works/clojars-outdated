@@ -31,6 +31,12 @@ $
 replace=true clojars-outdated
 ```
 
+Wait for a minute, network could be slow:
+
+```bash
+wait=true clojars-outdated
+```
+
 To check if CLI outdated:
 
 ```bash
