@@ -1,6 +1,6 @@
 {
   "name": "@mvc-works/clojars-outdated",
-  "version": "0.1.5-a1",
+  "version": "0.1.5",
   "scripts": {
     "watch": "yarn shadow-cljs watch app",
     "prepare": "yarn build",
