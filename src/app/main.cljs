@@ -10,7 +10,9 @@
             [cljs-node-io.fs :refer [areadFile awriteFile]]
             [chan-utils.core :refer [chan-once all-once]]
             ["latest-version" :as latest-version]
-            [applied-science.js-interop :as j])
+            [applied-science.js-interop :as j]
+            [cljs.reader :refer [read-string]]
+            [favored-edn.core :refer [write-edn]])
   (:require-macros [clojure.core.strint :refer [<<]]))
 
 (def envs
@@ -92,22 +94,21 @@
       (println)
       (println "Failed to check:" (->> failed-checks (map first) (string/join " "))))))
 
-(defn replace-numbers [content new-versions]
+(defn replace-dep [dep new-versions]
   (if (empty? new-versions)
-    content
-    (let [rule (first new-versions)
-          new-content (let [pattern (re-pattern
-                                     (str
-                                      (:pkg rule)
-                                      "\\s+"
-                                      "\""
-                                      (string/replace (:from rule) "." "\\.")
-                                      "\""))]
-                        (string/replace
-                         content
-                         pattern
-                         (fn [piece] (string/replace piece (:from rule) (:to rule)))))]
-      (recur new-content (rest new-versions)))))
+    dep
+    (let [cursor (first new-versions)]
+      (if (= (first dep) (:pkg cursor))
+        [(:pkg cursor) (:to cursor)]
+        (recur dep (rest new-versions))))))
+
+(defn replace-numbers [content new-versions]
+  (let [new-config (-> (read-string content)
+                       (update
+                        :dependencies
+                        (fn [deps]
+                          (->> deps (map (fn [dep] (replace-dep dep new-versions))) (vec)))))]
+    (write-edn new-config {:indent 2})))
 
 (defn replace-versions! [results]
   (let [new-versions (->> results
