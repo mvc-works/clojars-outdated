@@ -8,11 +8,12 @@
             ["chalk" :as chalk]
             [clojure.string :as string]
             [cljs-node-io.fs :refer [areadFile awriteFile]]
-            [chan-utils.core :refer [chan-once all-once]]
+            [chan-utils.core :refer [all-once]]
             ["latest-version" :as latest-version]
             [applied-science.js-interop :as j]
             [cljs.reader :refer [read-string]]
-            [favored-edn.core :refer [write-edn]])
+            [favored-edn.core :refer [write-edn]]
+            [cljs.core.async.interop :refer [<p!]])
   (:require-macros [clojure.core.strint :refer [<<]]))
 
 (def envs
@@ -24,35 +25,34 @@
 (defn write [& xs] (.apply js/process.stdout.write js/process.stdout (clj->js xs)))
 
 (defn chan-check-dep [[dep-name version]]
-  (chan-once
-   got
-   (-> axios
-       (.get
-        (str "https://clojars.org/api/artifacts/" dep-name)
-        (j/obj :timeout (if (:wait? envs) 100000 12000)))
-       (.then
-        (fn [response]
-          (let [latest-version (.-latest_version (.-data response))]
-            (write (chalk/gray ">"))
-            (got {:ok? true, :params [dep-name version], :data latest-version}))))
-       (.catch
-        (fn [error]
-          (write (chalk/red ">"))
-          (got {:ok? false, :params [dep-name version], :error error}))))))
+  (go
+   (try
+    (let [response (<p!
+                    (-> axios
+                        (.get
+                         (str "https://clojars.org/api/artifacts/" dep-name)
+                         (j/obj :timeout (if (:wait? envs) 100000 12000)))))
+          latest-version (j/get-in response ["data" "latest_version"])]
+      (write (chalk/gray ">"))
+      {:ok? true, :params [dep-name version], :data latest-version})
+    (catch
+     js/Error
+     error
+     (write (chalk/red ">"))
+     {:ok? false, :params [dep-name version], :error error}))))
 
 (defn check-version! []
   (let [pkg (.parse js/JSON (fs/readFileSync (path/join js/__dirname "../package.json")))
         version (.-version pkg)
         pkg-name (.-name pkg)]
-    (-> (latest-version pkg-name)
-        (.then
-         (fn [npm-version]
-           (if (= npm-version version)
-             (comment println "Running latest version" version)
-             (println
-              (chalk/yellow
-               (<<
-                "New version ~{npm-version} available, current one is ~{version} . Please upgrade!\n\nyarn global add ~{pkg-name}\n")))))))))
+    (go
+     (let [npm-version (<p! (latest-version pkg-name))]
+       (if (= npm-version version)
+         (comment println "Running latest version" version)
+         (println
+          (chalk/yellow
+           (<<
+            "New version ~{npm-version} available, current one is ~{version} . Please upgrade!\n\nyarn global add ~{pkg-name}\n"))))))))
 
 (defn pad-right [x n] (if (>= (count x) n) x (recur (str x " ") n)))
 
