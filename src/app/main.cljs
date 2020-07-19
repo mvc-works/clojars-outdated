@@ -54,7 +54,7 @@
            (<<
             "New version ~{npm-version} available, current one is ~{version} . Please upgrade!\n\nyarn global add ~{pkg-name}\n"))))))))
 
-(defn display-results! [results skipped-deps]
+(defn display-results! [file-name results skipped-deps]
   (let [ok-checks (->> results
                        (filter (fn [check] (:ok? check)))
                        (map
@@ -80,7 +80,7 @@
        (.gray chalk (->> latest-packages (string/join " ")))))
     (when (not-empty old-packages)
       (println)
-      (println (.yellow chalk "Outdated packages:"))
+      (println (.yellow chalk "Outdated packages in" file-name ":"))
       (let [max-name-length (->> old-packages (map :name) (map str) (map count) (apply max))]
         (doseq [info old-packages]
           (println
@@ -100,6 +100,24 @@
         [(:pkg cursor) (:to cursor)]
         (recur dep (rest new-versions))))))
 
+(defn replace-deps-edn-dep [dep new-versions]
+  (if (empty? new-versions)
+    dep
+    (let [cursor (first new-versions)]
+      (if (= (first dep) (:pkg cursor))
+        [(:pkg cursor) {:mvn/version (:to cursor)}]
+        (recur dep (rest new-versions))))))
+
+(defn replace-deps-numbers [content new-versions]
+  (let [new-config (-> (read-string content)
+                       (update
+                        :deps
+                        (fn [deps]
+                          (->> deps
+                               (map (fn [dep] (replace-deps-edn-dep dep new-versions)))
+                               (into {})))))]
+    (write-edn new-config {:indent 2})))
+
 (defn replace-numbers [content new-versions]
   (let [new-config (-> (read-string content)
                        (update
@@ -108,7 +126,7 @@
                           (->> deps (map (fn [dep] (replace-dep dep new-versions))) (vec)))))]
     (write-edn new-config {:indent 2})))
 
-(defn replace-versions! [results]
+(defn replace-versions! [filename results]
   (let [new-versions (->> results
                           (filter
                            (fn [x]
@@ -122,37 +140,50 @@
                               :to (:data x)})))]
     (if-not (empty? new-versions)
       (go
-       (let [[err content] (<! (areadFile "shadow-cljs.edn" "utf8"))
-             new-content (replace-numbers content new-versions)]
-         (<! (awriteFile "shadow-cljs.edn" new-content nil))
+       (let [[err content] (<! (areadFile filename "utf8"))
+             new-content (case filename
+                           "shadow-cljs.edn" (replace-numbers content new-versions)
+                           "deps.edn" (replace-deps-numbers content new-versions)
+                           (do (println "Unknown file:" filename) content))]
+         (<! (awriteFile filename new-content nil))
          (println)
-         (println (chalk/yellow "File is modified under replace mode!")))))))
+         (println (chalk/yellow filename "is modified under replace mode!")))))))
 
-(defn task! []
-  (println (chalk/gray "Reading shadow-cljs.edn"))
-  (when-not (fs/existsSync "shadow-cljs.edn")
-    (println (chalk/red "Not found"))
-    (.exit js/process 1))
+(defn clojars-task! [filename]
+  (println (chalk/gray "Reading" filename))
   (go
-   (let [start-time (.now js/Date)
-         [err content] (<! (areadFile "shadow-cljs.edn" "utf8"))
-         data (read-string content)
-         deps (->> (:dependencies data)
-                   (filter
-                    (fn [pair] (not (string/includes? (str (first pair)) "org.clojure")))))
-         skipped-deps (->> (:dependencies data)
-                           (filter
-                            (fn [pair] (string/includes? (str (first pair)) "org.clojure"))))]
-     (write (chalk/gray (string/join "" (repeat (count deps) "."))))
-     (write "\r")
-     (let [<check-results (all-once chan-check-dep deps)
-           results (<! <check-results)
-           end-time (.now js/Date)
-           cost (/ (- end-time start-time) 1000)]
-       (println (chalk/gray (<< " cost ~{cost}s to check.")))
-       (display-results! results skipped-deps)
-       (when (:replace? envs) (replace-versions! results))))))
+   (if-not (fs/existsSync filename)
+     (println (chalk/red filename "not found"))
+     (let [start-time (.now js/Date)
+           [err content] (<! (areadFile filename "utf8"))
+           data (case filename
+                  "shadow-cljs.edn" (:dependencies (read-string content))
+                  "deps.edn"
+                    (->> (:deps (read-string content))
+                         (map (fn [[k v]] [k (:mvn/version v)])))
+                  (do (println "Unknown filename:" filename)))
+           deps (->> data
+                     (filter
+                      (fn [pair] (not (string/includes? (str (first pair)) "org.clojure")))))
+           skipped-deps (->> data
+                             (filter
+                              (fn [pair]
+                                (string/includes? (str (first pair)) "org.clojure"))))]
+       (write (chalk/gray (string/join "" (repeat (count deps) "."))))
+       (write "\r")
+       (let [<check-results (all-once chan-check-dep deps)
+             results (<! <check-results)
+             end-time (.now js/Date)
+             cost (/ (- end-time start-time) 1000)]
+         (println (chalk/gray (<< " cost ~{cost}s to check.")))
+         (display-results! filename results skipped-deps)
+         (when (:replace? envs) (replace-versions! filename results)))))))
 
-(defn main! [] (task!) (when (:npm-check? envs) (check-version!)))
+(defn main! []
+  (go (<! (clojars-task! "shadow-cljs.edn")) (<! (clojars-task! "deps.edn")))
+  (when (:npm-check? envs) (check-version!)))
 
-(defn reload! [] (.clear js/console) (println "Reloaded.") (task!))
+(defn reload! []
+  (.clear js/console)
+  (println "Reloaded.")
+  (comment clojars-task! "shadow-cljs.edn"))
