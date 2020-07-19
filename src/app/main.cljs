@@ -8,12 +8,12 @@
             ["chalk" :as chalk]
             [clojure.string :as string]
             [cljs-node-io.fs :refer [areadFile awriteFile]]
-            [chan-utils.core :refer [all-once]]
             ["latest-version" :as latest-version]
             [applied-science.js-interop :as j]
             [cljs.reader :refer [read-string]]
             [favored-edn.core :refer [write-edn]]
-            [cljs.core.async.interop :refer [<p!]])
+            [cljs.core.async.interop :refer [<p!]]
+            [app.util :refer [pad-right all-once]])
   (:require-macros [clojure.core.strint :refer [<<]]))
 
 (def envs
@@ -53,8 +53,6 @@
           (chalk/yellow
            (<<
             "New version ~{npm-version} available, current one is ~{version} . Please upgrade!\n\nyarn global add ~{pkg-name}\n"))))))))
-
-(defn pad-right [x n] (if (>= (count x) n) x (recur (str x " ") n)))
 
 (defn display-results! [results skipped-deps]
   (let [ok-checks (->> results

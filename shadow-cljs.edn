@@ -1,11 +1,6 @@
 {
   :source-paths ["src"]
-  :repositories {
-    "central" {:url "https://maven.aliyun.com/nexus/content/groups/public/"}
-    "clojars" {:url "https://mirrors.ustc.edu.cn/clojars/"}
-  }
   :dependencies [
-    [mvc-works/chan-utils "0.1.1"]
     [cljs-node-io "1.1.2"]
     [medley "1.3.0"]
     [cirru/favored-edn "0.1.3"]
