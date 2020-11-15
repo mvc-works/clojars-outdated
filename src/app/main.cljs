@@ -132,7 +132,9 @@
                            (fn [x]
                              (and (:ok? x)
                                   (not= (:data x) (last (:params x)))
-                                  (re-matches #"\d+\.\d+\.\d+" (:data x)))))
+                                  (if (re-matches #"\d+\.\d+\.\d+" (last (:params x)))
+                                    (re-matches #"\d+\.\d+\.\d+" (:data x))
+                                    true))))
                           (map
                            (fn [x]
                              {:pkg (first (:params x)),
