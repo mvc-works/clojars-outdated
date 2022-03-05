@@ -19,7 +19,7 @@
     "ws": "^7.4.6"
   },
   "dependencies": {
-    "axios": "^0.21.1",
+    "axios": "^0.21.2",
     "chalk": "^4.1.0",
     "latest-version": "^5.1.0"
   }
